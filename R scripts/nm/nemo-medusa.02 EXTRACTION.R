@@ -12,32 +12,34 @@ source("./R scripts/@_Region file.R")                                       # De
 
 plan(multisession)                                                          # Choose the method to parallelise by with furrr
 
-all_files <- list.files("/mnt/idrive/Science/MS/Shared/CAO/nemo/ALLARC", 
+
+all_files <- list.files("../../../../import/fish/South_Atlantic/", 
                         recursive = TRUE, full.names = TRUE) %>%
   as.data.frame() %>%                                                       # Turn the vector into a dataframe
   separate(".", into = c(rep(NA, 9), "Year", "File"), sep = "/", remove = FALSE) %>% # Extract the year and month from the file name
-  mutate(date = paste0(str_extract_all(File, "\\d+")), 
+  mutate(date = str_extract_all(File, "\\d+") %>% map(`[`, 5), 
          Month = str_sub(date, start = 5, end = 6)) %>%                     # Pull month
-  separate(".", into = c("Path", "File"), sep = 51) %>%                     # Extract the year and month from the file name
-  mutate(Type = case_when(str_detect(File, "ptrc_T") ~ "ptrc_T_",       # Query file types
+  separate(".", into = c("Path", "File"), sep = 58) %>%                     # Extract the year and month from the file name
+  mutate(Type = case_when(str_detect(File, "ptrc_T") ~ "ptrc_T_",           # Query file types
                           str_detect(File, "grid_T") ~ "grid_T_",
                           str_detect(File, "grid_U") ~ "grid_U_",
                           str_detect(File, "grid_V") ~ "grid_V_",
                           str_detect(File, "grid_W") ~ "grid_W_",
                           str_detect(File, "icemod") ~ "icemod_")) %>% 
   filter(!File %in% c("ptrc_T_20000625.nc", "ptrc_T_20470130.nc")) %>%      # Drop corrupted files
+  drop_na() %>% 
   filter(Type != "grid_W_") %>%                                             # Drop the vertical water movement files
-  select(Path, File, date, Year, Month, Type)
+  select(Path, File, Type, Year, Month)
 
 domains <- readRDS("./Objects/Domains.rds") %>%                             # Load SF polygons of the MiMeMo model domains
   select(-c(Elevation, area))                                               # Drop unneeded data which would get included in new NM files
 
 crop <- readRDS("./Objects/Domains.rds") %>%                                # Load SF polygons of the MiMeMo model domains
-  st_buffer(dist = 50000) %>%                                               # It needs to be a bit bigger for sampling flows at the domain boundary
+  st_buffer(dist = 70000) %>%                                               # It needs to be a bit bigger for sampling flows at the domain boundary
   summarise() %>%                                                           # Combine polygons to avoid double sampling
   mutate(Shore = "Buffer")
 
-Bathymetry <- readRDS("./Objects/NA_grid.rds") %>%                          # Import NEMO-MEDUSA bathymetry
+Bathymetry <- readRDS("./Objects/SA_grid.rds") %>%                          # Import NEMO-MEDUSA bathymetry
   st_drop_geometry() %>%                                                    # Drop sf geometry column 
   select(-c("x", "y"), latitude = Latitude, longitude = Longitude)          # Clean column so the bathymetry is joined by lat/lon
 
@@ -46,7 +48,7 @@ Bathymetry <- readRDS("./Objects/NA_grid.rds") %>%                          # Im
 sf_use_s2(F)
 
 scheme <- scheme_strathE2E(get_spatial(paste0(all_files$Path[1], all_files$File[1]), grid_W = F),
-                           Bathymetry, 60, 600, crop) %>% 
+                           Bathymetry, SDepth, DDepth, crop) %>% 
   select(x, y, layer, group, weight, slab_layer, longitude, latitude, Bathymetry) %>%   # Get a scheme to summarise for StrathE2E
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, remove = F) %>% # Convert to sf object
   st_join(st_transform(domains, crs = 4326)) %>%                            # Attach model zone information
@@ -71,11 +73,17 @@ scheme_result <- arrange(scheme, group) %>%                                 # Cr
 
 #### extract ####
 
-tictoc::tic()
+tic()
 all_files %>%
   split(., f = list(.$Month, .$Year)) %>%                                   # Specify the timestep to average files over.
 #  .[1:12] %>% 
   future_map(NEMO_MEDUSA, analysis = "slabR", summary = scheme_result,
              scheme = scheme, ice_scheme = ice_scheme$n, start = start,  
              count = count, out_dir = "./Objects/Months", .progress = T)    # Perform the extraction and save an object for each month (in parallel)
-tictoc::toc()
+toc()
+
+#### Check ####
+
+# ggplot(filter(NM.01.1980, slab_layer == "S")) +
+#   geom_raster(aes(x= x, y = y, fill = Temperature)) +
+#   theme_minimal()

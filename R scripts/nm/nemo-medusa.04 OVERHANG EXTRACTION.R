@@ -12,12 +12,11 @@ source("./R scripts/@_Region file.R")                                       # De
 
 plan(multisession)
 
-domain <- readRDS("./Objects/Domains.rds") %>%                              # Get the horizontal area to extract over 
-  select(Shore) %>% 
-  filter(Shore =="Offshore")
+domain <- readRDS("./Objects/Overhang.rds") %>%                             # Get the horizontal area to extract over 
+  select(Shore) 
 
 example <- list.files("../../../../import/fish/South_Atlantic/",            # File to pull dimensions from 
-                      recursive = T, full.names = TRUE, pattern = "grid_W")
+                      recursive = T, full.names = TRUE, pattern = "grid_W")[1]
 
 #### Create summary scheme to interpolate a depth layer over a given area #####
 
@@ -25,21 +24,21 @@ Bathymetry <- readRDS("./Objects/SA_grid.rds") %>%                          # Im
   st_drop_geometry() %>%                                                    # Drop sf geometry column 
   select(-c("x", "y"), latitude = Latitude, longitude = Longitude)          # Clean column so the bathymetry is joined by lat/lon
 
-scheme <- scheme_interp_slice(get_spatial(example, grid_W = T), SDepth, domain) # Get a scheme for linear interpolation between 2 depth layers
+scheme <- scheme_interp_slice(get_spatial(example, grid_W = T), DDepth, domain) # Get a scheme for linear interpolation between 2 depth layers
 
 start <- scheme_to_start()                                                  # Get netcdf vectors which define the minimum
 count <- scheme_to_count()                                                  # amount of data to import
 
 scheme <- scheme_reframe(scheme) %>%                                        # Adjust scheme indices so they match the array subset
   left_join(Bathymetry) %>%                                                 # Attach bathymetry to summary scheme
-  filter(depth < Bathymetry & SDepth < Bathymetry) %>%                      # Drop points where the target depth or next deeper layer are below the sea floor
+  filter(depth < Bathymetry & DDepth < Bathymetry) %>%                      # Drop points where the target depth or next deeper layer are below the sea floor
   group_by(y, x) %>%                                                        # Redefine the group column as removing points can disrupt this
   mutate(group = cur_group_id()) %>%                                        # Create a new grouping column for the summary scheme
   ungroup()
 
 summary <- filter(scheme, layer == 1) %>%                                   # Create the metadata to attach to summaries
   arrange(group) %>%                                                        # Summaries will be returned in group order, so make sure these match
-  mutate(depth = SDepth) %>%                                                # Lets return the depth we interpolated to
+  mutate(depth = DDepth) %>%                                                # Lets return the depth we interpolated to
   select(x, y, longitude, latitude, depth)                                  # As well as horizontal information
 
 #### Extract ####
@@ -59,6 +58,12 @@ W_files <- list.files("../../../../import/fish/South_Atlantic/",
 
 tic()
 future_map(W_files, NEMO_MEDUSA, analysis = "slabR",                        # Interpolate grid_W files in paralell
-           out_dir = "./Objects/vertical boundary", scheme_w = scheme,
+           out_dir = "./Objects/overhang", scheme_w = scheme,
            start_w = start, count_w = count, summary = summary, .progress = T)
 toc()
+
+#### Check ####
+
+# ggplot(NM.1.1980) +
+#   geom_raster(aes(x= x, y = y, fill = Vertical_diffusivity)) +
+#   theme_minimal()

@@ -10,7 +10,8 @@ library(furrr)
 plan(multisession)                                                          # Instructions for parallel processing
 
 TS <- readRDS("./Objects/TS.rds")                                           # Read in time series
-vars_ts <- c("Salinity_avg", "Temperature_avg", "DIN_avg", "Detritus_avg", "Phytoplankton_avg") # List of variables to plot   
+vars_ts <- c("Salinity_avg", "Temperature_avg", "DIN_avg", 
+             "Detritus_avg", "Phytoplankton_avg")                           # Variables to plot   
 
 SP <- readRDS("./Objects/SPATIAL.rds")                                      # Read in spatial data
 vars_sp <- str_remove(vars_ts, "_avg") %>%                                  # Tweak the variable names for spatial plots

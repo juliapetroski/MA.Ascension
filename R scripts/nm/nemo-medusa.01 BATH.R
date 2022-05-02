@@ -9,7 +9,7 @@ rm(list=ls())                                                               # Wi
 packages <- c("MiMeMo.tools", "ncdf4", "sf")                                # List handy data packages
 lapply(packages, library, character.only = TRUE)                            # Load packages
 
-Space <- list.files("/mnt/idrive/Science/MS/Shared/CAO/nemo/ALLARC/1980/", recursive = TRUE, full.names = TRUE) %>% 
+Space <- list.files("../../../../import/fish/South_Atlantic/Physics_Data/1980/", recursive = TRUE, full.names = TRUE) %>% 
   .[1] %>%                                                                  # Name an example NM file
   nemomedusR::get_spatial()                                                 # And pull the spatial variables
 
@@ -23,16 +23,21 @@ bath_lon <- ncvar_get(raw, varid = "nav_lon")
 bath_bath <- ncvar_get(raw, varid = "Bathymetry")
 nc_close(raw)
 
-#### Crop to the North Atlantic files extent ####
+#### Crop to the South Atlantic files extent ####
 
-## The two matrices have the same widths, so just subset the columns. Both matrices have the same top latitude, so it's
-## just a question of how far south to go.
+tl <- which(bath_lat == Space$nc_lat[1,1] & bath_lon == Space$nc_lon[1,1], arr.ind = TRUE) # Cut out Bathymetry columns which match SA CROP
+tr <- which(bath_lat == Space$nc_lat[1,ncol(Space$nc_lat)] & bath_lon == Space$nc_lon[1,ncol(Space$nc_lon)], arr.ind = TRUE)# Where in the big grid matches each corner of SA?
+bl <- which(bath_lat == Space$nc_lat[nrow(Space$nc_lat),1] & bath_lon == Space$nc_lon[nrow(Space$nc_lon),1], arr.ind = TRUE)  
+br <- which(bath_lat == Space$nc_lat[nrow(Space$nc_lat), ncol(Space$nc_lat)] & bath_lon == Space$nc_lon[nrow(Space$nc_lon),ncol(Space$nc_lon)], arr.ind = TRUE)
 
-bath <- bath_bath[, (ncol(bath_bath)-ncol(Space$nc_lat)+1): ncol(bath_bath)]
+bath <- bath_bath[tl[,"row"]:(tl[,"row"]+nrow(Space$nc_lat)-1),
+                  tl[,"col"]:(tl[,"col"]+ncol(Space$nc_lat)-1)]
 
-lat <- bath_lat[, (ncol(bath_bath)-ncol(Space$nc_lat)+1): ncol(bath_bath)]
+lat <- bath_lat[tl[,"row"]:(tl[,"row"]+nrow(Space$nc_lat)-1),
+                tl[,"col"]:(tl[,"col"]+ncol(Space$nc_lat)-1)]
 
-lon <- bath_lon[, (ncol(bath_bath)-ncol(Space$nc_lat)+1): ncol(bath_bath)]
+lon <- bath_lon[tl[,"row"]:(tl[,"row"]+nrow(Space$nc_lat)-1),
+                tl[,"col"]:(tl[,"col"]+ncol(Space$nc_lat)-1)]
 
 #### Further region specific crop to speed up extraction ####
 
@@ -45,4 +50,4 @@ grid <- setNames(reshape2::melt(lat), c("x", "y", "Latitude")) %>%
 ggplot(grid) +
   geom_raster(aes(x=x, y=y, fill = Bathymetry))
 
-saveRDS(grid, file = "./Objects/NA_grid.rds")      # Save
+saveRDS(grid, file = "./Objects/SA_grid.rds")      # Save
