@@ -70,17 +70,6 @@ ggplot() +
 #  geom_sf(data = Depths, aes(fill = Depth), alpha = 0.2) +
   theme_minimal() 
 
-#### Cut to region mask ####
-
-# contained <- st_cast(Distance, "POLYGON") %>%
-#   st_join(st_transform(Region_mask, st_crs(Distance)), st_within) %>% 
-#   drop_na() %>% 
-#   st_as_sf() %>% 
-#   st_union() %>% 
-#   #st_as_sf() %>% 
-#   st_sf(Shore = "Inshore") %>% 
-#   rename(geometry = ".")
-
 exactextractr::exact_extract(raster("../Shared data/GEBCO_2020.nc"), Distance, "mean")
 
 
@@ -89,8 +78,6 @@ ggplot() +
   geom_sf(data = Bottom, fill = "lightblue", size =0.1) +
   geom_sf(data = Distance, fill = "red", size = 0.1) +
   theme_minimal()
-
-ggsave("./Figures/bathymetry/EEZ.png", width = 18, height = 10, units = "cm", dpi = 700)
 
 #### Format to domains object ####
 
@@ -107,13 +94,56 @@ saveRDS(Domains, "./Objects/Domains.rds")
 
 map <- ggplot() + 
   geom_sf(data = Domains, aes(fill = Shore), colour = NA) +
-#  geom_sf(data = Region_mask, colour = "red", fill = NA) + 
   geom_sf(data = world, size = 0.1, fill = "black") +
   scale_fill_manual(values = c(Inshore = "yellow", Offshore = "yellow3"), name = "Zone") +
-#  zoom +
   coord_sf(xlim = st_bbox(st_transform(EEZ,crs))[c(1,3)], ylim = st_bbox(st_transform(EEZ,crs))[c(2,4)]) +
   theme_minimal() +
-  #  theme(axis.text = element_blank()) +
   labs(caption = "Final model area") +
   NULL
-ggsave_map("./Figures/bathymetry/Domains.png", map)
+#### Inshore box ####
+
+expansion <- 0.25 # Degs
+
+box <- st_bbox(land) %>% 
+  `+`(c(-1, -1, 1, 1) * expansion) %>% 
+  st_as_sfc() 
+
+Inshore <- st_difference(box, land) %>% 
+  st_as_sf(Shore = "Inshore") %>% 
+  rename(geometry = x)
+
+ggplot() +
+  geom_sf(data = Inshore) + 
+  theme_minimal() 
+
+exactextractr::exact_extract(raster("../Shared data/GEBCO_2020.nc"), Inshore, "mean")
+
+ggplot() +
+  geom_sf(data = EEZ, fill = "white", size = 0.1) +
+  geom_sf(data = Bottom, fill = "lightblue", size =0.1) +
+  geom_sf(data = Inshore, fill = "red", size = 0.1, alpha = 0.5) +
+  theme_minimal()
+
+#### Format to domains object ####
+
+Offshore <- st_transform(EEZ, 4326) %>%
+  transmute(Shore = "Offshore") %>% 
+  st_difference(box)
+
+plot(Offshore)
+
+Domains <- bind_rows(Offshore, Inshore) %>% 
+  transmute(Shore = Shore,
+            area = as.numeric(st_area(.)),
+            Elevation = exactextractr::exact_extract(raster("../Shared data/GEBCO_2020.nc"), ., "mean")) %>% 
+  st_transform(crs = crs) 
+
+saveRDS(Domains, "./Objects/Domains.rds")
+
+map <- ggplot() + 
+  geom_sf(data = Domains, aes(fill = Shore), colour = NA) +
+  scale_fill_manual(values = c(Inshore = "red", Offshore = "yellow3"), name = "Zone") +
+  coord_sf(xlim = st_bbox(st_transform(EEZ,crs))[c(1,3)], ylim = st_bbox(st_transform(EEZ,crs))[c(2,4)]) +
+  theme_minimal() +
+  labs(caption = "Final model area") +
+  NULL
