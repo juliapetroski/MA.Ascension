@@ -20,6 +20,7 @@ pre <- list(scale = 1, width = 12, height = 10, units = "cm", dpi = 500) # The s
 
 SDepth <- 60                  # Shallow deep boundary
 DDepth <- 600                  # Maximum depth
+Distance <- 2.6                # Minimum distance from shore buffer for the inshore zone (pulled by the implementation doc)
 
 #### bathymetry.5 MODEL DOMAIN ####
 
