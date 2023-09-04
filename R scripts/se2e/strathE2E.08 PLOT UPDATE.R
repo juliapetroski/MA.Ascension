@@ -22,7 +22,7 @@ ggplot() +
   theme_minimal() +
   facet_wrap(vars(Var), scales = "free_y")
 
-ggsave("./Figures/StrathE2E updated chemistry.png")
+ggsave("./Figures/StrathE2E updated chemistry.png", bg = "white")
 
 #### physics #### 
 
@@ -37,5 +37,5 @@ ggplot() +
   theme_minimal() +
   facet_wrap(vars(Var), scales = "free_y")
 
-ggsave("./Figures/StrathE2E updated physics.png")
+ggsave("./Figures/StrathE2E updated physics.png", bg = "white")
 

@@ -9,7 +9,7 @@ Packages <- c("MiMeMo.tools", "exactextractr", "raster")                    # Li
 lapply(Packages, library, character.only = TRUE)                            # Load packages
 source("./R scripts/@_Region file.R")
 
-domains <- readRDS("./Objects/Domains.rds") %>%                             # Import inshore polygon
+domains <- readRDS("./Objects/Domains-accurate.rds") %>%                             # Import inshore polygon
   filter(Shore == "Inshore") %>% 
   st_transform(crs = 4326)
 

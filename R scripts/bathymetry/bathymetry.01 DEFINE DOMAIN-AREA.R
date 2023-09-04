@@ -37,14 +37,20 @@ land <- matrix(c(-15, -7,
   st_transform(4326) %>% 
   st_difference(st_transform(EEZ, 4326))
 
+transmute(land,
+          Shore = "Land",
+          area = as.numeric(st_area(.))) %>% 
+  st_transform(crs = crs) %>%  
+  saveRDS("./Objects/land.rds")
+
 #### Polygons based on depth ####
 
 Depths <- GEBCO[EEZ] %>% 
   st_as_stars()
 
-Depths[[1]][Depths[[1]] > units::set_units(0, "m") | Depths[[1]] < units::set_units(-600, "m")] <- NA
+Depths[[1]][Depths[[1]] > units::set_units(0, "m") | Depths[[1]] < units::set_units(-DDepth, "m")] <- NA
 
-Depths[[1]][is.finite(Depths[[1]])] <- units::set_units(-600, "m")
+Depths[[1]][is.finite(Depths[[1]])] <- units::set_units(-DDepth, "m")
 
 Bottom <- st_as_stars(Depths) %>%
   st_as_sf(merge = TRUE) %>%
@@ -59,7 +65,7 @@ ggplot(Bottom) +
 
 #### Polygons based on distance ####
 
-Distance <- st_buffer(land, units::set_units(2600, "m")) %>% 
+Distance <- st_buffer(land, units::set_units(Distance*1000, "m")) %>% 
   st_difference(land) %>% 
   transmute(Shore = "Inshore") %>% 
   rename(geometry = ".")
@@ -94,7 +100,7 @@ ggsave("./Figures/bathymetry/EEZ.png", width = 18, height = 10, units = "cm", dp
 
 #### Format to domains object ####
 
-Offshore <- st_difference(st_transform(EEZ, 4326), st_buffer(land, units::set_units(2600, "m"))) %>%
+Offshore <- st_difference(st_transform(EEZ, 4326), st_buffer(land, units::set_units(2.6*1000, "m"))) %>%
   transmute(Shore = "Offshore") 
 
 Domains <- bind_rows(Offshore, Distance) %>% 
