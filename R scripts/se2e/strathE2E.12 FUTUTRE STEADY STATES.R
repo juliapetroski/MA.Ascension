@@ -26,7 +26,7 @@ walk2(seq(2020, 2090, by = 10),
         model <- e2e_read(implementation, str_glue("{as.character(.x)}-{as.character(.y)}"),
                            models.path = "StrathE2E/Models/", results.path = "StrathE2E/Results/")
         
-        results <- e2e_run(model,nyears = 100)
+        results <- e2e_run(model,nyears = 200)
         
         #### Update starting conditions ####
         
@@ -49,3 +49,11 @@ walk2(seq(2020, 2090, by = 10),
                   row.names = F)
         
       }, quiet = FALSE))
+
+#### Check things updated ####
+
+model <- e2e_read(implementation,"2080-2089", models.path = "StrathE2E/Models/", results.path = "StrathE2E/Results/")
+
+results <- e2e_run(model,nyears = 10)                                # Run the model
+
+e2e_plot_ts(model, results)                                          # Should start from a steady state
