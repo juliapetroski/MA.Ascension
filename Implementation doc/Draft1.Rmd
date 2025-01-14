@@ -371,9 +371,9 @@ Reports from Saint Helena Island, a neighboring island, suggest that lobsters en
 Based on this information, the spawning period for the CS benthos guild was established from January 1st to March 31st, with the recruitment period from April 1st to June 30th.
 In the absence of specific recruitment data, we assumed recruitment would begin 30 days after the end of the spawning period, continuing for 120 days.
 
-#### Deposit and filter benthos {.unnumbered}
+#### Filter and deposit benthos {.unnumbered}
 
-Research on the reproductive activities of deposit and filter benthos in Ascension Island is limited.
+Research on the reproductive activities of FD benthos in Ascension Island is limited.
 We adopted the same spawning and recruitment periods used for the DF benthos guild in the South Brazil Bight implementation (See X source): spawning period from September 1st to February 1st and recruitment from August 1st to January 1st.
 
 ```{r event_cap}
